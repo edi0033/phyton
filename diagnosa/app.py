@@ -8,8 +8,6 @@ import os
 
 # Ambil API Key dari Streamlit Secrets atau Environment Variable
 # Cara ini lebih aman daripada menuliskannya langsung di kode.
-# Di Streamlit Cloud, Anda akan menentukannya di bagian "Secrets".
-# Di lokal, Anda bisa mengatur sebagai Environment Variable atau di file .streamlit/secrets.toml
 try:
     API_KEY = os.environ.get("GEMINI_API_KEY") or st.secrets["GEMINI_API_KEY"]
 except (KeyError, AttributeError):
@@ -72,12 +70,19 @@ st.markdown("Halo! Saya akan membantu Anda menemukan rekomendasi tempat wisata a
 if "messages" not in st.session_state:
     st.session_state.messages = []
     # Tambahkan pesan pembuka dari chatbot ke riwayat
-    st.session_state.messages.append({"role": "model", "parts": INITIAL_CHATBOT_CONTEXT[1]["parts"][0]})
+    st.session_state.messages.append({"role": "model", "parts": [INITIAL_CHATBOT_CONTEXT[1]["parts"][0]]}) # Pastikan parts selalu list of strings
 
 # Tampilkan riwayat chat
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.write(message["parts"][0])
+        message_content = ""
+        # Pastikan 'parts' ada, adalah list, tidak kosong, dan elemen pertamanya adalah string
+        if isinstance(message.get("parts"), list) and message["parts"] and isinstance(message["parts"][0], str):
+            message_content = message["parts"][0]
+        
+        # Hanya tulis jika konten pesan tidak kosong
+        if message_content:
+            st.write(message_content)
 
 # Input pengguna
 user_input = st.chat_input("Masukkan nama kota (contoh: 'Bandung') atau ketik 'exit' untuk keluar:")
@@ -93,24 +98,18 @@ if user_input:
             st.write("Sampai jumpa! Semoga perjalanan Anda menyenangkan.")
         st.stop() # Hentikan proses lebih lanjut
 
-    # Siapkan riwayat untuk model (tidak termasuk pesan 'exit' jika ada)
-    # Penting: Sesuaikan riwayat yang dikirim ke model agar sesuai format API Gemini
-    # Model membutuhkan riwayat dalam format list of dicts, contoh:
-    # [{"role": "user", "parts": ["Halo"]}, {"role": "model", "parts": ["Hai juga"]}]
-    
+    # Siapkan riwayat untuk model (tidak termasuk pesan 'exit' jika dia mengetik 'exit')
     # Gabungkan INITIAL_CHATBOT_CONTEXT dengan riwayat sesi yang sudah ada
-    # Pastikan tidak ada duplikasi pesan pembuka dari model
+    # Filter pesan pembuka dari model agar tidak terduplikasi saat dikirim ke Gemini
     history_for_gemini = INITIAL_CHATBOT_CONTEXT + [
         {"role": msg["role"], "parts": msg["parts"]}
         for msg in st.session_state.messages
-        if msg["role"] != "model" or msg["parts"][0] != INITIAL_CHATBOT_CONTEXT[1]["parts"][0]
+        # Jangan sertakan pesan pembuka model jika sudah ada di INITIAL_CHATBOT_CONTEXT
+        if not (msg["role"] == "model" and msg["parts"][0] == INITIAL_CHATBOT_CONTEXT[1]["parts"][0])
     ]
 
-
-    # Buat sesi chat dengan riwayat yang ada
-    # Hapus pesan terakhir user_input jika dia 'exit'
-    chat = model.start_chat(history=history_for_gemini[:-1] if user_input.lower() == 'exit' else history_for_gemini)
-
+    # Buat sesi chat dengan riwayat yang sudah difilter
+    chat = model.start_chat(history=history_for_gemini)
 
     with st.spinner("Chatbot sedang membalas..."):
         try:
