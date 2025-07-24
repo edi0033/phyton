@@ -70,18 +70,18 @@ st.markdown("Halo! Saya akan membantu Anda menemukan rekomendasi tempat wisata a
 if "messages" not in st.session_state:
     st.session_state.messages = []
     # Tambahkan pesan pembuka dari chatbot ke riwayat
-    st.session_state.messages.append({"role": "model", "parts": [INITIAL_CHATBOT_CONTEXT[1]["parts"][0]]}) # Pastikan parts selalu list of strings
+    st.session_state.messages.append({"role": "model", "parts": [INITIAL_CHATBOT_CONTEXT[1]["parts"][0]]})
 
 # Tampilkan riwayat chat
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        message_content = ""
-        # Pastikan 'parts' ada, adalah list, tidak kosong, dan elemen pertamanya adalah string
-        if isinstance(message.get("parts"), list) and message["parts"] and isinstance(message["parts"][0], str):
-            message_content = message["parts"][0]
-        
-        # Hanya tulis jika konten pesan tidak kosong
-        if message_content:
+    message_content = ""
+    # Pastikan 'parts' ada, adalah list, tidak kosong, dan elemen pertamanya adalah string
+    if isinstance(message.get("parts"), list) and message["parts"] and isinstance(message["parts"][0], str):
+        message_content = message["parts"][0]
+    
+    # Hanya buat gelembung obrolan dan tulis konten jika konten pesan tidak kosong
+    if message_content:
+        with st.chat_message(message["role"]):
             st.write(message_content)
 
 # Input pengguna
